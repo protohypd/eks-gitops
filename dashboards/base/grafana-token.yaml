@@ -1,0 +1,23 @@
+# Pulls the Amazon Managed Grafana service-account token from AWS Secrets
+# Manager and materializes it as a Secret named grafana-external-credentials.
+# The Grafana CR below references it as the apiKey.
+#
+# The Secrets Manager secret `eks-grafana-token` must be a JSON document
+# with key `token`, populated from `aws grafana create-workspace-service-account-token`.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-external-credentials
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  target:
+    name: grafana-external-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: token
+      remoteRef:
+        key: eks-grafana-token
+        property: token
