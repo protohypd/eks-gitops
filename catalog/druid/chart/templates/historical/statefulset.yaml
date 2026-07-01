@@ -28,6 +28,7 @@ spec:
       containers:
         - name: {{ include "druid.component.name" (list "historical" .) }}
           {{- include "druid.image" . | nindent 10 }}
+          {{- include "druid.container.security" . | nindent 10 }}
           args: ["historical"]
           {{- include "druid.ports" (list "historical" 8283) | nindent 10 }}
           env:

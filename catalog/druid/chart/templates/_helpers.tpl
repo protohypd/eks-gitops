@@ -51,10 +51,15 @@ Labels & Annotations
 {{- end }}
 {{- end -}}
 
+{{/*
+Selector labels. Only the component label — the {domain}/name label already
+reaches every resource through common.labels, and emitting it here too would
+render the same map key twice wherever templates combine component.labels
+with match.labels.
+*/}}
 {{- define "druid.component.match.labels" -}}
 {{- $component := index . 0 -}}
 {{- $ctx := index . 1 -}}
-{{ $ctx.Values.domain }}/name: {{ $ctx.Values.name }}
 {{ $ctx.Values.domain }}/component: {{ include "druid.component.name" (list $component $ctx) }}
 {{- end -}}
 
@@ -103,6 +108,22 @@ automountServiceAccountToken: true
 serviceAccountName: {{ $saName }}
 securityContext:
 {{- toYaml $ctx.Values.securityContext | nindent 2 }}
+{{- end -}}
+
+{{/*
+Container-level hardening, shared by every Druid container. The JVM runs as
+uid 1000 (pod securityContext), never needs privilege escalation, holds no
+capabilities (all listen ports are >1024), and is happy under the runtime's
+default seccomp profile.
+*/}}
+{{- define "druid.container.security" -}}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
 {{- end -}}
 
 {{/*

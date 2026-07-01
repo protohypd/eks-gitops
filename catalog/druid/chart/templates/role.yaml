@@ -6,10 +6,15 @@ metadata:
     {{- include "common.labels" . | indent 4 }}
   annotations:
     {{- include "common.annotations" . | indent 4 }}
+# Namespace-scoped permissions for druid-kubernetes-extensions (pod discovery,
+# ConfigMap-based announcements/leader election) and
+# druid-kubernetes-overlord-extensions (the overlord launches ingestion tasks
+# as Jobs and manages their pods/logs). Verbs are enumerated — never "*" — so
+# the grant does not silently widen with new API verbs.
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
-    verbs: ["*"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
   - apiGroups: [""]
     resources: ["pods", "pods/log", "configmaps", "secrets"]
-    verbs: ["*"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]

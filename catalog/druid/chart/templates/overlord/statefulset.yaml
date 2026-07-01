@@ -31,6 +31,7 @@ spec:
       containers:
         - name: {{ include "druid.component.name" (list "overlord" .) }}
           {{- include "druid.image" . | nindent 10 }}
+          {{- include "druid.container.security" . | nindent 10 }}
           args: ["overlord"]
           {{- include "druid.ports" (list "overlord" 8290) | nindent 10 }}
           env:
