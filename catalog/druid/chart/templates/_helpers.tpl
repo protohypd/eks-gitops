@@ -177,6 +177,11 @@ Environment — computed from release name
     secretKeyRef:
       name: {{ include "druid.name" . }}-druid-system
       key: password
+- name: DRUID_TLS_KEYSTORE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "druid.name" . }}-keystore-password
+      key: password
 {{- with .Values.extraEnv }}
 {{ . | toYaml }}
 {{- end }}
