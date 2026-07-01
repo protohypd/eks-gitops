@@ -70,7 +70,8 @@ task lint:yaml              # YAML lint all files
 task kustomize:build        # Build all overlays (all environments)
 task kustomize:build:env    # Build overlays for ENVIRONMENT (default: dev)
 task validate               # Lint + build combined
-task render                 # Render manifests to rendered/ directory
+task render                 # Render manifests to rendered/ (incl. druid chart)
+task scan                   # kubeconform + trivy config gates over rendered/
 ```
 
 ## Relationship to Parent Repo
@@ -83,6 +84,7 @@ task render                 # Render manifests to rendered/ directory
 ## CI
 
 - PR and push to main trigger `.github/workflows/ci.yml` (lint → validate per environment → PR summary)
+- The validate job renders every kustomize root plus the druid catalog chart, then gates the rendered output: render-assert (no unfilled sentinels), kubeconform strict (native schemas + datreeio CRDs-catalog, no ignore-missing-schemas), and `trivy config` (misconfiguration scan, MEDIUM+ hard-fails; scoped justified exceptions live in `.trivyignore.yaml`)
 - Manual diff rendering available via `.github/workflows/diff.yml`
 
 ## Claude Code Tooling

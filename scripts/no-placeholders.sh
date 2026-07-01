@@ -14,7 +14,9 @@
 # (user-supplied Cloudflare IDs, off by default).
 set -uo pipefail
 
-SENTINELS='PLACEHOLDER|REPLACE_ME|REPLACEME|CHANGEME|CHANGE_ME|FILL_ME|FILLME|TODO_FILL|TO_BE_FILLED|<FILL|<YOUR_|<ACCOUNT_ID>|<FLEET_ACCOUNT'
+# "changeit" is the JVM keystore default password — a well-known credential,
+# gated here like any other fill-me sentinel.
+SENTINELS='PLACEHOLDER|REPLACE_ME|REPLACEME|CHANGEME|CHANGE_ME|changeit|FILL_ME|FILLME|TODO_FILL|TO_BE_FILLED|<FILL|<YOUR_|<ACCOUNT_ID>|<FLEET_ACCOUNT'
 
 hits=$(grep -rnE "$SENTINELS" . \
   --include='*.yaml' --include='*.yml' --include='*.tf' --include='*.hcl' \

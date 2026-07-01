@@ -61,6 +61,21 @@ tasks:
     cmds:
       - echo "All validations passed."
 
+  scan:
+    desc: "Schema + misconfiguration gates on rendered/ (run task render first)"
+    cmds:
+      - |
+        kubeconform -strict -summary \
+          -schema-location default \
+          -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{"{{"}}.Group{{"}}"}}/{{"{{"}}.ResourceKind{{"}}"}}_{{"{{"}}.ResourceAPIVersion{{"}}"}}.json' \
+          -skip Grafana \
+          rendered
+      - |
+        trivy config --exit-code 1 \
+          --severity MEDIUM,HIGH,CRITICAL \
+          --ignorefile .trivyignore.yaml \
+          rendered
+
   # === Rendering ===
 
   render:
@@ -74,6 +89,21 @@ tasks:
           echo "Rendering $dir ..."
           kustomize build --enable-helm "$dir" > "rendered/${name}.yaml" || exit 1
         done
+        # Druid catalog chart with synthetic tenant values — same render CI
+        # gates (see .github/workflows/ci.yml).
+        echo "Rendering catalog/druid/chart ..."
+        helm template ci catalog/druid/chart -n druid-ci \
+          -f catalog/druid/values.yaml \
+          --set hostedId=ci \
+          --set environment={{.ENVIRONMENT}} \
+          --set secrets.metadata=ci/druid/metadata \
+          --set secrets.admin=ci/druid/admin \
+          --set secrets.system=ci/druid/system \
+          --set secrets.keystore=ci/druid/keystore \
+          --set s3.indexLogsBucket=ci-druid-indexlogs \
+          --set s3.deepStorageBucket=ci-druid-deepstorage \
+          --set s3.msqBucket=ci-druid-msq \
+          > rendered/catalog-druid-chart.yaml
         echo "All {{.ENVIRONMENT}} overlays rendered to rendered/"
 
   clean:
