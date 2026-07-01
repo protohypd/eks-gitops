@@ -73,16 +73,10 @@ spec:
   keystores:
     pkcs12:
       create: true
+      # Sourced from AWS Secrets Manager via the ExternalSecret in
+      # externalsecret.yaml — cert-manager uses it to encrypt the PKCS#12
+      # keystore/truststore it writes into the TLS secret, and the same
+      # password reaches Druid as DRUID_TLS_KEYSTORE_PASSWORD.
       passwordSecretRef:
         name: {{ include "druid.name" . }}-keystore-password
         key: password
----
-# Keystore password secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "druid.name" . }}-keystore-password
-  namespace: {{ .Release.Namespace }}
-type: Opaque
-stringData:
-  password: changeit

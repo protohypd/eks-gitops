@@ -27,6 +27,7 @@ spec:
       containers:
         - name: {{ include "druid.component.name" (list "router" .) }}
           {{- include "druid.image" . | nindent 10 }}
+          {{- include "druid.container.security" . | nindent 10 }}
           args: ["router"]
           {{- include "druid.ports" (list "router" 9088) | nindent 10 }}
           env:

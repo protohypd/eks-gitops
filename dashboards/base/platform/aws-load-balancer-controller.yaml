@@ -13,4 +13,3 @@ spec:
   resyncPeriod: 24h
   grafanaCom:
     id: 16450
-    revision: latest

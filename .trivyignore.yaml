@@ -1,0 +1,92 @@
+# Scoped, justified exceptions for the trivy misconfiguration gate in CI
+# (validate job, `trivy config ... rendered`). Paths match rendered-manifest
+# file names, so each exception applies to exactly one addon's output — a new
+# finding anywhere else still fails the gate until it is fixed or added here
+# with a statement.
+misconfigurations:
+  # ── aws-neuron-device-plugin ──────────────────────────────────────────
+  # Kubernetes device plugin: root and hostPath are the device-plugin
+  # contract, not a misconfiguration.
+  - id: KSV-0012
+    paths:
+      - "*aws-neuron-device-plugin*"
+    statement: >-
+      The device plugin runs as root to open /dev/neuron* devices and
+      register over the kubelet's device-plugins socket.
+  - id: KSV-0023
+    paths:
+      - "*aws-neuron-device-plugin*"
+    statement: >-
+      hostPath mounts of the kubelet device-plugins directory (and the
+      Neuron driver paths) are how a device plugin talks to the kubelet;
+      there is no volume type that replaces them.
+  - id: KSV-0125
+    paths:
+      - "*aws-neuron-device-plugin*"
+    statement: >-
+      Registry-allowlist check; the image ships from AWS's public Neuron
+      registry. Image provenance is enforced cluster-side by the Kyverno
+      verify-images policy (policies/kyverno/supply-chain).
+
+  # ── druid catalog chart ───────────────────────────────────────────────
+  - id: KSV-0014
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      The apache/druid entrypoint and the JVM write inside the container
+      filesystem at startup; scratch/task data already lives on the
+      druid-scratch emptyDir at /var/druid. readOnlyRootFilesystem is not
+      enabled until it has been verified against the upstream image.
+  - id: KSV-0109
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      The runtime.properties ConfigMaps contain keys named *Password whose
+      values are ${env:...} references resolved in-pod from
+      ExternalSecret-backed env vars — no secret material is stored in the
+      ConfigMap.
+  - id: KSV-01010
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      Same as KSV-0109 — password-named keys hold environment-variable
+      indirection, not values.
+  - id: KSV-0042
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      The namespace-scoped Role (enumerated verbs, no wildcards) backs
+      druid-kubernetes-overlord-extensions: the overlord launches ingestion
+      tasks as Jobs and manages their pods and logs.
+  - id: KSV-0048
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      Same Role — Job/pod management is the Druid k8s task runner's job.
+  - id: KSV-0049
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      Same Role — druid-kubernetes-extensions uses ConfigMaps for node
+      announcements and leader election.
+  - id: KSV-0113
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      Same Role — task pods created by the overlord consume the
+      chart-managed secrets in their own namespace.
+  - id: KSV-0125
+    paths:
+      - "*catalog_druid_chart*"
+      - "*catalog-druid-chart*"
+    statement: >-
+      Registry-allowlist check; apache/druid is the upstream vendor image.
+      Image provenance is enforced cluster-side by the Kyverno verify-images
+      policy (policies/kyverno/supply-chain).

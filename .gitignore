@@ -13,6 +13,10 @@
 *secret*.json
 !*secret*-store*.yaml
 !*secret*-store*.yml
+# ExternalSecret manifests are references into the secret store, not secret
+# material — they must ship with the charts that need them.
+!*externalsecret*.yaml
+!*external-secret*.yaml
 
 # IAM roles / sensitive AWS config
 *role-trust-policy*.json

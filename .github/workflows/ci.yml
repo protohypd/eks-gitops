@@ -68,6 +68,26 @@ jobs:
           done
           echo "All ${{ matrix.environment }} manifests rendered successfully."
 
+      # The druid catalog chart deploys through the druid-tenants
+      # ApplicationSet (base values layered with per-tenant values), so the
+      # overlay loop above never touches it. Render it with synthetic tenant
+      # values so the chart's templates pass through the same render-assert,
+      # schema, and misconfiguration gates as every kustomize root.
+      - name: Render druid catalog chart
+        run: |
+          helm template ci catalog/druid/chart -n druid-ci \
+            -f catalog/druid/values.yaml \
+            --set hostedId=ci \
+            --set environment=${{ matrix.environment }} \
+            --set secrets.metadata=ci/druid/metadata \
+            --set secrets.admin=ci/druid/admin \
+            --set secrets.system=ci/druid/system \
+            --set secrets.keystore=ci/druid/keystore \
+            --set s3.indexLogsBucket=ci-druid-indexlogs \
+            --set s3.deepStorageBucket=ci-druid-deepstorage \
+            --set s3.msqBucket=ci-druid-msq \
+            > rendered/catalog_druid_chart.yaml
+
       # Source files are gated by the zero-placeholder job; this asserts the
       # RENDERED output too — catching a zero account id, placeholder token, or
       # account-less ARN that only appears after kustomize/helm templating.
@@ -76,6 +96,69 @@ jobs:
         with:
           manifests: rendered
           exclude: 'mcp-tunnel'
+
+      # ── Schema gate ────────────────────────────────────────────────────
+      # kubeconform in strict mode over everything just rendered. Native
+      # kinds resolve from the default kubernetes-json-schema location; CRD
+      # kinds resolve from the datreeio CRDs-catalog. There is deliberately
+      # no -ignore-missing-schemas: a kind neither source knows fails the
+      # build until it gets a schema or an explicit, justified -skip below.
+      #   -skip Grafana — the single external Grafana CR ships
+      #   spec.external.url empty by design (the dashboards ApplicationSet
+      #   injects the per-cluster Amazon Managed Grafana URL via its cluster
+      #   generator patch), and the catalog schema is stricter than the
+      #   upstream CRD (requires tenantNamespace, which upstream does not).
+      #
+      # The binary and downloaded schemas are cached; restore-keys lets each
+      # run reuse the newest cache while still persisting newly fetched
+      # schemas.
+      - name: Cache kubeconform + schemas
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.local/bin/kubeconform
+            ~/.cache/kubeconform
+          key: kubeconform-v0.8.0-${{ github.run_id }}
+          restore-keys: |
+            kubeconform-v0.8.0-
+
+      - name: Install kubeconform
+        run: |
+          if [ ! -x "$HOME/.local/bin/kubeconform" ]; then
+            mkdir -p "$HOME/.local/bin"
+            curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz \
+              | tar -xz -C "$HOME/.local/bin" kubeconform
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Schema gate (kubeconform)
+        run: |
+          mkdir -p "$HOME/.cache/kubeconform"
+          kubeconform -strict -summary \
+            -cache "$HOME/.cache/kubeconform" \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -skip Grafana \
+            rendered
+
+      # ── Misconfiguration gate ──────────────────────────────────────────
+      # trivy config over the rendered manifests — not the repo tree — so
+      # every check sees the post-templating truth with helm values applied.
+      # MEDIUM and above hard-fails; .trivyignore.yaml carries the scoped,
+      # justified exceptions (device-plugin root/hostPath, druid's
+      # k8s-extensions Role, env-indirected config keys).
+      - name: Install trivy
+        uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.72.0
+          cache: true
+
+      - name: Misconfiguration gate (trivy config)
+        run: |
+          trivy config --exit-code 1 \
+            --severity MEDIUM,HIGH,CRITICAL \
+            --ignorefile .trivyignore.yaml \
+            rendered
 
   pr-summary:
     name: PR Summary
@@ -93,7 +176,7 @@ jobs:
               : r === 'skipped' ? ':fast_forward:' : ':x:';
             const results = {
               'YAML Lint': '${{ needs.lint.result }}',
-              'Render + assert (all environments)': '${{ needs.validate.result }}',
+              'Render + assert + schema + misconfig (all environments)': '${{ needs.validate.result }}',
             };
             const rows = Object.entries(results)
               .map(([check, r]) => `| ${check} | ${icon(r)} ${r} |`)

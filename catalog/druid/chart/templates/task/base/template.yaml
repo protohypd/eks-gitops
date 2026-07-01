@@ -27,6 +27,7 @@ data:
         containers:
           - name: {{ include "druid.name" . }}-druid-task
             {{- include "druid.image" . | nindent 12 }}
+            {{- include "druid.container.security" . | nindent 12 }}
             command: ["sh", "-c", "/peon.sh /var/druid 1"]
             ports:
               - containerPort: 8091

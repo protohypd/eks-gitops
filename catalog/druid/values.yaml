@@ -40,6 +40,10 @@ secrets:
   metadata: ""
   admin: ""
   system: ""
+  # AWS Secrets Manager name holding {"password": ...} — the PKCS#12
+  # keystore/truststore password shared by cert-manager (keystore creation)
+  # and Druid (DRUID_TLS_KEYSTORE_PASSWORD). Set per tenant, no default.
+  keystore: ""
 
 s3:
   indexLogsBucket: ""
@@ -81,27 +85,27 @@ runtime: |-
   druid.enablePlaintextPort=false
   druid.server.https.keyStorePath=/opt/druid/conf/druid/cluster/tls/server-keystore.p12
   druid.server.https.keyStoreType=pkcs12
-  druid.server.https.keyManagerPassword=changeit
-  druid.server.https.keyStorePassword=changeit
+  druid.server.https.keyManagerPassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
+  druid.server.https.keyStorePassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
   druid.server.https.reloadSslContext=true
   druid.server.https.reloadSslContextSeconds=180
   druid.server.https.requestClientCertificate=true
   druid.server.https.trustStoreType=pkcs12
   druid.server.https.trustStorePath=/opt/druid/conf/druid/cluster/tls/server-truststore.p12
-  druid.server.https.trustStorePassword=changeit
+  druid.server.https.trustStorePassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
   druid.server.https.validateHostnames=false
   druid.server.https.sniHostCheck=false
   druid.server.http.sniHostCheck=false
   druid.server.http.sniRequired=false
   druid.client.https.keyStorePath=/opt/druid/conf/druid/cluster/tls/client-keystore.p12
   druid.client.https.keyStoreType=pkcs12
-  druid.client.https.keyStorePassword=changeit
-  druid.client.https.keyManagerPassword=changeit
+  druid.client.https.keyStorePassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
+  druid.client.https.keyManagerPassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
   druid.client.https.validateHostnames=false
   druid.client.https.protocol=TLSv1.2
   druid.client.https.trustStoreType=pkcs12
   druid.client.https.trustStorePath=/opt/druid/conf/druid/cluster/tls/client-truststore.p12
-  druid.client.https.trustStorePassword=changeit
+  druid.client.https.trustStorePassword=${env:DRUID_TLS_KEYSTORE_PASSWORD}
 
   # kubernetes discovery (zookeeper-less)
   druid.discovery.type=k8s

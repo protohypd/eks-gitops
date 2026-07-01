@@ -51,10 +51,15 @@ Labels & Annotations
 {{- end }}
 {{- end -}}
 
+{{/*
+Selector labels. Only the component label — the {domain}/name label already
+reaches every resource through common.labels, and emitting it here too would
+render the same map key twice wherever templates combine component.labels
+with match.labels.
+*/}}
 {{- define "druid.component.match.labels" -}}
 {{- $component := index . 0 -}}
 {{- $ctx := index . 1 -}}
-{{ $ctx.Values.domain }}/name: {{ $ctx.Values.name }}
 {{ $ctx.Values.domain }}/component: {{ include "druid.component.name" (list $component $ctx) }}
 {{- end -}}
 
@@ -103,6 +108,22 @@ automountServiceAccountToken: true
 serviceAccountName: {{ $saName }}
 securityContext:
 {{- toYaml $ctx.Values.securityContext | nindent 2 }}
+{{- end -}}
+
+{{/*
+Container-level hardening, shared by every Druid container. The JVM runs as
+uid 1000 (pod securityContext), never needs privilege escalation, holds no
+capabilities (all listen ports are >1024), and is happy under the runtime's
+default seccomp profile.
+*/}}
+{{- define "druid.container.security" -}}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
 {{- end -}}
 
 {{/*
@@ -176,6 +197,11 @@ Environment — computed from release name
   valueFrom:
     secretKeyRef:
       name: {{ include "druid.name" . }}-druid-system
+      key: password
+- name: DRUID_TLS_KEYSTORE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "druid.name" . }}-keystore-password
       key: password
 {{- with .Values.extraEnv }}
 {{ . | toYaml }}
@@ -274,7 +300,16 @@ JVM
 {{- end -}}
 
 {{/*
-Probes
+Probes — (port, healthPath, readinessPath).
+
+Every process in this chart (coordinator, overlord, broker, historical, router)
+exposes /status/health — plus the broker/historical readiness endpoints — on its
+service port, so all probes are real httpGet checks; none of the components
+lacks an HTTP health surface, so there is no tcpSocket fallback. The cluster
+runs TLS-only (druid.enablePlaintextPort=false), hence scheme HTTPS: the
+kubelet skips certificate verification for HTTPS probes, so the internal CA is
+fine, and Druid serves these paths unauthenticated (they are on its default
+unsecured-path list) with client certs requested but not required.
 */}}
 
 {{- define "druid.probes" -}}
@@ -283,24 +318,30 @@ Probes
 {{- $readinessPath := index . 2 -}}
 livenessProbe:
   failureThreshold: 3
-  tcpSocket:
+  httpGet:
+    path: {{ $healthPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 180
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 5
 readinessProbe:
   failureThreshold: 10
-  tcpSocket:
+  httpGet:
+    path: {{ $readinessPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 180
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 5
 startupProbe:
   failureThreshold: 60
-  tcpSocket:
+  httpGet:
+    path: {{ $healthPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 60
   periodSeconds: 10
   successThreshold: 1
