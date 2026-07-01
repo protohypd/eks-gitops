@@ -274,7 +274,16 @@ JVM
 {{- end -}}
 
 {{/*
-Probes
+Probes — (port, healthPath, readinessPath).
+
+Every process in this chart (coordinator, overlord, broker, historical, router)
+exposes /status/health — plus the broker/historical readiness endpoints — on its
+service port, so all probes are real httpGet checks; none of the components
+lacks an HTTP health surface, so there is no tcpSocket fallback. The cluster
+runs TLS-only (druid.enablePlaintextPort=false), hence scheme HTTPS: the
+kubelet skips certificate verification for HTTPS probes, so the internal CA is
+fine, and Druid serves these paths unauthenticated (they are on its default
+unsecured-path list) with client certs requested but not required.
 */}}
 
 {{- define "druid.probes" -}}
@@ -283,24 +292,30 @@ Probes
 {{- $readinessPath := index . 2 -}}
 livenessProbe:
   failureThreshold: 3
-  tcpSocket:
+  httpGet:
+    path: {{ $healthPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 180
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 5
 readinessProbe:
   failureThreshold: 10
-  tcpSocket:
+  httpGet:
+    path: {{ $readinessPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 180
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 5
 startupProbe:
   failureThreshold: 60
-  tcpSocket:
+  httpGet:
+    path: {{ $healthPath }}
     port: {{ $port }}
+    scheme: HTTPS
   initialDelaySeconds: 60
   periodSeconds: 10
   successThreshold: 1
