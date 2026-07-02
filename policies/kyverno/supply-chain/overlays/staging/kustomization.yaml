@@ -4,12 +4,12 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Staging: Audit during the signature rollout. Flip value to Enforce once the
-# PolicyReports here show every ghcr.io/nanohype/* image verifying clean.
+# Staging: enforce, same as production, so an unsigned image surfaces as an
+# admission failure in staging before it ever reaches a production rollout.
 patches:
   - patch: |-
       - op: replace
         path: /spec/validationFailureAction
-        value: Audit
+        value: Enforce
     target:
       kind: ClusterPolicy
