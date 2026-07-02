@@ -4,13 +4,14 @@ kind: Kustomization
 resources:
   - ../../base
 
-# Production: Audit during the signature rollout. Flip value to Enforce once
-# staging has run a clean audit week and every ghcr.io/nanohype/* image
-# verifies — at which point an unsigned or tampered image is blocked at admission.
+# Production: an unsigned or tampered ghcr.io/nanohype/* image is blocked at
+# admission. Every factory image is keyless-signed by its release workflow,
+# so a verification failure means hand-pushed or altered — exactly what must
+# not run here.
 patches:
   - patch: |-
       - op: replace
         path: /spec/validationFailureAction
-        value: Audit
+        value: Enforce
     target:
       kind: ClusterPolicy

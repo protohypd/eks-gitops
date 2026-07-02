@@ -15,9 +15,9 @@ metadata:
       image — hand-pushed or tampered — fails verification. Images outside
       ghcr.io/nanohype/* are not matched and pass unaffected.
 spec:
-  # Audit during the signature rollout: report every unsigned nanohype image
-  # in PolicyReports without blocking admission. Overlays flip this to Enforce
-  # per environment once reports are clean (see overlays/).
+  # Base is Audit: dev keeps it (violations land in PolicyReports without
+  # blocking iteration); the staging and production overlays patch this to
+  # Enforce so unsigned images are rejected at admission (see overlays/).
   validationFailureAction: Audit
   # Image verification calls the registry + Rekor; the 10s default is tight.
   webhookTimeoutSeconds: 30
