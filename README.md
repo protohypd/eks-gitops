@@ -152,7 +152,12 @@ task clean                    # Remove rendered output
 - [Environment Configuration](docs/configuration/environments.md)
 - [Adding Addons](docs/configuration/adding-addons.md)
 - [Contributing](docs/development/contributing.md)
-- [Troubleshooting](docs/runbooks/troubleshooting.md)
+- Runbooks
+  - [Troubleshooting](docs/runbooks/troubleshooting.md)
+  - [Addon Sync Stuck or Degraded](docs/runbooks/addon-sync-degraded.md)
+  - [Rolling Back an Addon](docs/runbooks/rollback.md)
+  - [Druid Operations](docs/runbooks/druid-operations.md)
+  - [Render-Gate Failures on PRs](docs/runbooks/render-gate-failures.md)
 
 ## License
 
