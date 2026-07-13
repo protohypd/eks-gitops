@@ -20,7 +20,10 @@ spec:
               selector:
                 matchLabels:
                   argocd.argoproj.io/secret-type: cluster
-                  eks-agent-platform/enabled: "true"
+                  # Gate GPU addons on a dedicated label so non-accelerator shapes
+                  # skip them entirely (cluster-bootstrap sets it only when
+                  # enable_accelerators is true). A GPU-less cluster lacks it.
+                  eks-agent-platform/accelerators: "true"
           - list:
               elements:
                 - appName: gpu-operator
