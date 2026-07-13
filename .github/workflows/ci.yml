@@ -33,6 +33,64 @@ jobs:
       - name: Run yamllint
         run: yamllint -c .yamllint.yaml .
 
+  # ── Dashboard gate ───────────────────────────────────────────────────
+  # Every spec.grafanaCom.id must (a) still exist on grafana.com and (b) be
+  # saveable by Amazon Managed Grafana. Both failure modes park the CR forever
+  # and hold the dashboards Application — and app-of-apps — Degraded, and
+  # neither is visible to kustomize/kubeconform/trivy: the ids render as valid
+  # ints, so only grafana.com itself can answer. Talks to grafana.com over the
+  # network; the script retries each request with backoff so a blip is a retry,
+  # not a red build.
+  dashboards:
+    name: Dashboard gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Dead ids + AMG-unsaveable legacy alerts
+        run: ./scripts/validate-dashboards.py
+
+  # ── Fork-safety gate ─────────────────────────────────────────────────
+  # An applied ApplicationSet must not hardcode nanohype/eks-gitops — THIS
+  # CATALOG — in a repoURL. The catalog is vended: a customer forks it and
+  # points their hub at THEIR fork, so a hardcoded catalog ref keeps syncing
+  # from upstream and the fork's own edits never take effect. Each must resolve
+  # from the cluster Secret annotation gitops/repo-url, the same mechanism
+  # dashboards.yaml already uses for monitoring/grafana-url.
+  #
+  # The scope is CATALOG-only, and that is load-bearing — do not widen it:
+  # nanohype's PUBLISHED ARTIFACTS are correctly hardcoded, because a vended org
+  # CONSUMES them from upstream rather than forking them, exactly like a Helm
+  # repo or a container registry. Out of scope on purpose:
+  #   - nanohype/eks-agent-platform — the operator's own source/chart repo. A
+  #     customer does not fork the product; templating it would point at a fork
+  #     that does not exist.
+  #   - ghcr.io/nanohype/* images, oci://ghcr.io/nanohype charts.
+  #   - the Kyverno keyless-signing subjectRegExp — a signing IDENTITY to verify
+  #     against, not a source to sync from.
+  #   - everything under applicationsets/opt-in/ — app-of-apps sources
+  #     `path: applicationsets` without directory.recurse, so a default install
+  #     never applies them; their org-specific URLs are documented in
+  #     applicationsets/opt-in/README.md as a repoint-before-enabling step.
+  # See the full rationale in scripts/check-hardcoded-org.py.
+  #
+  # TODO: MAKE THIS BLOCKING ONCE THE repoURL-TEMPLATING PR LANDS — add
+  # `--blocking` to the run step below (matching TODO in the script). The
+  # catalog currently carries 19 such refs and a companion PR is templating
+  # them, so until that merges this gate is report-only: it prints every
+  # violation and exits 0, rather than red-lighting the PR that fixes it.
+  # Expected count after that lands: 0.
+  fork-safety:
+    name: Fork-safety gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: No hardcoded catalog repoURL in applied ApplicationSets
+        run: ./scripts/check-hardcoded-org.py
+
   validate:
     name: Validate (${{ matrix.environment }})
     runs-on: ubuntu-latest
@@ -164,7 +222,7 @@ jobs:
     name: PR Summary
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
-    needs: [lint, validate]
+    needs: [lint, dashboards, fork-safety, validate]
     permissions:
       pull-requests: write
     steps:
@@ -176,6 +234,8 @@ jobs:
               : r === 'skipped' ? ':fast_forward:' : ':x:';
             const results = {
               'YAML Lint': '${{ needs.lint.result }}',
+              'Dashboard gate (live grafana.com ids + AMG-saveable)': '${{ needs.dashboards.result }}',
+              'Fork-safety gate (no hardcoded org, report-only)': '${{ needs.fork-safety.result }}',
               'Render + assert + schema + misconfig (all environments)': '${{ needs.validate.result }}',
             };
             const rows = Object.entries(results)
