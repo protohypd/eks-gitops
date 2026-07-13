@@ -167,6 +167,27 @@ jobs:
       #   generator patch), and the catalog schema is stricter than the
       #   upstream CRD (requires tenantNamespace, which upstream does not).
       #
+      #   -skip Platform,Tenant,ModelGateway,BudgetPolicy — the platform's OWN
+      #   CRDs (platform.nanohype.dev, agents.nanohype.dev,
+      #   governance.nanohype.dev). They are first-party: their schemas live in
+      #   eks-agent-platform and are published to no public catalog, so neither
+      #   schema-location can resolve them and kubeconform reports them as
+      #   Errors (schema not found) rather than Invalid.
+      #
+      #   These are NOT unchecked. They are validated against the real
+      #   validation webhook with `kubectl apply --dry-run=server`, which is a
+      #   strictly stronger gate than a JSON-schema match — it caught a real
+      #   error kubeconform could not have (identity.allowedModels and
+      #   identity.allowedModelFamilies are mutually exclusive). CI has no
+      #   cluster, so it cannot run that check; the skip records the gap rather
+      #   than pretending the schema resolved.
+      #
+      #   To remove this skip: publish the eks-agent-platform CRD schemas (e.g.
+      #   openapi2jsonschema over the CRD manifests) and add a -schema-location
+      #   for them. Deferred deliberately — a vendored copy of a first-party
+      #   schema drifts from the CRD that generates it, which is a worse failure
+      #   than a documented skip.
+      #
       # The binary and downloaded schemas are cached; restore-keys lets each
       # run reuse the newest cache while still persisting newly fetched
       # schemas.
@@ -196,7 +217,7 @@ jobs:
             -cache "$HOME/.cache/kubeconform" \
             -schema-location default \
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-            -skip Grafana \
+            -skip Grafana,Platform,Tenant,ModelGateway,BudgetPolicy \
             rendered
 
       # ── Misconfiguration gate ──────────────────────────────────────────
