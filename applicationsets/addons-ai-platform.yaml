@@ -26,28 +26,28 @@ spec:
                 # CRDs first (wave 40), then the controllers (wave 42).
                 - appName: kagent-crds
                   namespace: kagent
-                  chartRepo: oci://ghcr.io/kagent-dev/kagent/helm
+                  chartRepo: oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds
                   chart: kagent-crds
                   chartVersion: "0.9.6"
                   path: addons/ai-platform/kagent-crds
                   syncWave: "40"
                 - appName: agentgateway-crds
                   namespace: agentgateway
-                  chartRepo: oci://ghcr.io/agentgateway/agentgateway/charts
+                  chartRepo: oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway-crds
                   chart: agentgateway-crds
                   chartVersion: "1.0.1"
                   path: addons/ai-platform/agentgateway-crds
                   syncWave: "40"
                 - appName: kagent
                   namespace: kagent
-                  chartRepo: oci://ghcr.io/kagent-dev/kagent/helm
+                  chartRepo: oci://ghcr.io/kagent-dev/kagent/helm/kagent
                   chart: kagent
                   chartVersion: "0.9.6"
                   path: addons/ai-platform/kagent
                   syncWave: "42"
                 - appName: agentgateway
                   namespace: agentgateway
-                  chartRepo: oci://ghcr.io/agentgateway/agentgateway/charts
+                  chartRepo: oci://ghcr.io/agentgateway/agentgateway/charts/agentgateway
                   chart: agentgateway
                   chartVersion: "1.0.1"
                   path: addons/ai-platform/agentgateway
