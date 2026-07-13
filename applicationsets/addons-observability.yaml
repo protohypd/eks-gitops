@@ -80,24 +80,6 @@ spec:
             valueFiles:
               - $values/{{ .path }}/values.yaml
               - $values/{{ .path }}/values-{{ index .metadata.labels "environment" }}.yaml
-{{- if and (eq .appName "opencost") (hasKey .metadata.annotations "monitoring/amp-workspace-id") }}
-            # opencost queries Amazon Managed Prometheus through a sigv4-proxy
-            # sidecar; the workspace id + region flow from the cluster Secret
-            # (cluster-bootstrap stamps them from managed-monitoring). The
-            # platform has no in-cluster Prometheus, so the chart default
-            # (prometheus-server.prometheus-system) is disabled here.
-            valuesObject:
-              opencost:
-                prometheus:
-                  internal:
-                    enabled: false
-                  amp:
-                    enabled: true
-                    workspaceId: '{{ index .metadata.annotations "monitoring/amp-workspace-id" }}'
-              sigV4Proxy:
-                region: '{{ index .metadata.labels "region" }}'
-                host: 'aps-workspaces.{{ index .metadata.labels "region" }}.amazonaws.com'
-{{- end }}
         - repoURL: https://github.com/nanohype/eks-gitops.git
           targetRevision: main
           ref: values
