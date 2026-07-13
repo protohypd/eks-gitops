@@ -45,13 +45,6 @@ spec:
                   chartVersion: 1.10.0
                   path: addons/observability/alloy
                   syncWave: "32"
-                - appName: opencost
-                  namespace: opencost
-                  chartRepo: https://opencost.github.io/opencost-helm-chart
-                  chart: opencost
-                  chartVersion: "2.5.22"
-                  path: addons/observability/opencost
-                  syncWave: "33"
                 - appName: grafana-operator
                   namespace: grafana-operator
                   chartRepo: https://grafana.github.io/helm-charts

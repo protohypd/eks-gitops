@@ -1,0 +1,69 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: addons-opencost
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  # opencost is split out of addons-observability because it needs an
+  # opencost-specific valuesObject (Amazon Managed Prometheus via a sigv4 proxy)
+  # that would otherwise leak to the other observability charts. The AMP
+  # workspace id + region flow from the cluster Secret annotations/labels that
+  # cluster-bootstrap stamps from managed-monitoring; the opencost IRSA role
+  # grants aps:QueryMetrics. Targets clusters that have managed-monitoring
+  # applied (the amp-workspace-id annotation is required to render).
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/secret-type: cluster
+            eks-agent-platform/enabled: "true"
+  template:
+    metadata:
+      name: opencost
+      annotations:
+        argocd.argoproj.io/sync-wave: "33"
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://opencost.github.io/opencost-helm-chart
+          chart: opencost
+          targetRevision: "2.5.22"
+          helm:
+            releaseName: opencost
+            valueFiles:
+              - $values/addons/observability/opencost/values.yaml
+              - $values/addons/observability/opencost/values-{{ index .metadata.labels "environment" }}.yaml
+            valuesObject:
+              opencost:
+                prometheus:
+                  internal:
+                    enabled: false
+                  amp:
+                    enabled: true
+                    workspaceId: "{{ index .metadata.annotations \"monitoring/amp-workspace-id\" }}"
+              sigV4Proxy:
+                region: "{{ index .metadata.labels \"region\" }}"
+                host: "aps-workspaces.{{ index .metadata.labels \"region\" }}.amazonaws.com"
+        - repoURL: https://github.com/nanohype/eks-gitops.git
+          targetRevision: main
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: opencost
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
