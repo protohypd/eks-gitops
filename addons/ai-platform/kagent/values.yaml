@@ -48,16 +48,26 @@ kagent-tools:
 #
 # Real ops agents belong in an AgentFleet, where they get a modelRoute, a scoped
 # tool set, an IRSA binding and a NetworkPolicy.
-k8s-agent: { enabled: false }
-helm-agent: { enabled: false }
-istio-agent: { enabled: false }
-promql-agent: { enabled: false }
-kgateway-agent: { enabled: false }
-observability-agent: { enabled: false }
-argo-rollouts-agent: { enabled: false }
-cilium-manager-agent: { enabled: false }
-cilium-debug-agent: { enabled: false }
-cilium-policy-agent: { enabled: false }
+k8s-agent:
+  enabled: false
+helm-agent:
+  enabled: false
+istio-agent:
+  enabled: false
+promql-agent:
+  enabled: false
+kgateway-agent:
+  enabled: false
+observability-agent:
+  enabled: false
+argo-rollouts-agent:
+  enabled: false
+cilium-manager-agent:
+  enabled: false
+cilium-debug-agent:
+  enabled: false
+cilium-policy-agent:
+  enabled: false
 
 # ─────────────────────────── The default ModelConfig ───────────────────────────
 #
